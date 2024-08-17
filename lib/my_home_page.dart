@@ -38,6 +38,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool isNeedSendSpeechRecognition = false;
   String base64String = "";
   final TextEditingController _textController = TextEditingController();
+  bool isTextControllerActive = false;
 
   // Load data
   Future<Map<String, dynamic>> loadData() async {
@@ -126,6 +127,28 @@ class _MyHomePageState extends State<MyHomePage> {
       await _startRecording();
     }
   }
+  Future<void> _processSpeechRecognition() async {
+    try {
+      String sentence = await askForService(base64String, "華語");
+      setState(() {
+        _textController.text = sentence;
+        _textController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _textController.text.length),
+        );
+        isNeedSendSpeechRecognition = false;
+      });
+      // keyWord= sentence;
+      isTextControllerActive =true;
+      pageIndex =0;
+    } catch (e) {
+      _textController.text = '辨識失敗';
+      _textController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _textController.text.length),
+      );
+      isNeedSendSpeechRecognition = false;
+
+    }
+  }
 
   //record
   @override
@@ -177,7 +200,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   children: [
                     Expanded(
                       child: TextField(
-                        // controller: _textController,
+                        controller: _textController,
                         decoration: InputDecoration(
                           labelText: 'Search',
                           prefixIcon: OutlinedButton(
@@ -199,6 +222,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         onChanged: (value) {
                           pageIndex = 0;
                           keyWord = value;
+                          isTextControllerActive = false;
                           if(keyWord==""){
                             setState(() {
 
@@ -209,7 +233,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                     if (isNeedSendSpeechRecognition)
                       FutureBuilder(
-                        future: askForService(base64String, "華語"),
+                        future: _processSpeechRecognition(),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
                             return const SizedBox(
@@ -226,19 +250,19 @@ class _MyHomePageState extends State<MyHomePage> {
                             isNeedSendSpeechRecognition = false;
                             return const SizedBox(); // Return empty widget as we're updating the TextField
                           } else if (snapshot.hasData) {
-                            final sentence = snapshot.data.toString();
-                            _textController.text = sentence;
-                            _textController.selection = TextSelection.fromPosition(
-                              TextPosition(offset: _textController.text.length),
-                            );
-                            isNeedSendSpeechRecognition = false;
+                            // The state update happens inside _processSpeechRecognition
                             return const SizedBox(); // Return empty widget as we're updating the TextField
                           }
                           return const SizedBox(); // Handle any unexpected state with an empty widget
                         },
+
                       ),
                     IconButton(
                       onPressed: () {
+                        if (isTextControllerActive ==true){
+                          keyWord= _textController.text;
+                          isTextControllerActive = false;
+                        }
                         setState(() {
                           // Trigger a refresh or other action when search is pressed
                         });
